@@ -235,6 +235,7 @@ module ActiveMerchant #:nodoc:
             xml.amount(amount(amount))
             add_payment_source(xml, payment)
             add_invoice(xml, options)
+            add_settings(xml, payment, options)
           end
         end
       end
