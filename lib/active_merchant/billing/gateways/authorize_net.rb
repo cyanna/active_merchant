@@ -267,7 +267,7 @@ module ActiveMerchant #:nodoc:
           xml.transaction do
             xml.profileTransRefund do
               xml.amount(amount(amount))
-              xml.creditCardNumberMasked(card_number)
+              xml.creditCardNumberMasked(card_number) if !card_number.nil? && card_number.length > 0 # API does NOT always require this, but if you provide a blank value, it will fail always
               add_invoice(xml, options)
               xml.transId(transaction_id)
             end
