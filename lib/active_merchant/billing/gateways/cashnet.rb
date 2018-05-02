@@ -1,13 +1,17 @@
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class CashnetGateway < Gateway
-      self.live_url      = "https://commerce.cashnet.com/"
+      include Empty
+
+      self.live_url = "https://commerce.cashnet.com/"
+      self.test_url = "https://train.cashnet.com/"
 
       self.supported_countries = ["US"]
       self.supported_cardtypes = [:visa, :master, :american_express, :discover, :diners_club, :jcb]
       self.homepage_url        = "http://www.higherone.com/"
       self.display_name        = "Cashnet"
       self.money_format        = :dollars
+      self.max_retries         = 0
 
       # Creates a new CashnetGateway
       #
@@ -47,14 +51,26 @@ module ActiveMerchant #:nodoc:
         post = {}
         post[:origtx]  = identification
         add_invoice(post, options)
+        add_customer_data(post, options)
         commit('REFUND', money, post)
+      end
+
+      def supports_scrubbing?
+        true
+      end
+
+      def scrub(transcript)
+        transcript
+          .gsub(%r{(password=)[^&]+}, '\1[FILTERED]')
+          .gsub(%r{(cardno=)[^&]+}, '\1[FILTERED]')
+          .gsub(%r{(cid=)[^&]+}, '\1[FILTERED]')
       end
 
       private
 
       def commit(action, money, fields)
         fields[:amount] = amount(money)
-        url = live_url + CGI.escape(@options[:merchant_gateway_name])
+        url = (test? ? test_url : live_url) + CGI.escape(@options[:merchant_gateway_name])
         raw_response = ssl_post(url, post_data(action, fields))
         parsed_response = parse(raw_response)
 
@@ -106,6 +122,7 @@ module ActiveMerchant #:nodoc:
 
       def add_customer_data(post, options)
         post[:email_g]  = options[:email]
+        post[:custcode]  = options[:custcode] unless empty?(options[:custcode])
       end
 
       def expdate(creditcard)
