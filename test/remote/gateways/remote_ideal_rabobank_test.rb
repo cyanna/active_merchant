@@ -2,7 +2,7 @@ require 'test_helper'
 
 class RemoteIdealRabobankTest < Test::Unit::TestCase
   def setup
-    Base.mode = :test
+    Base.gateway_mode = :test
 
     @gateway = IdealRabobankGateway.new(fixtures(:ideal_rabobank))
 

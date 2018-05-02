@@ -6,11 +6,10 @@ class RemoteOmiseTest < Test::Unit::TestCase
     @amount  = 8888
     @credit_card   = credit_card('4242424242424242')
     @declined_card = credit_card('4255555555555555')
-    @invalid_cvc   = credit_card('4111111111160001', {verification_value: ''})
+    @invalid_cvc   = credit_card('4024007148673576', {verification_value: ''})
     @options = {
       description: 'Active Merchant',
-      email: 'active.merchant@testing.test',
-      currency: 'thb'
+      email: 'active.merchant@testing.test'
     }
   end
 
@@ -32,11 +31,11 @@ class RemoteOmiseTest < Test::Unit::TestCase
   end
 
   def test_successful_purchase
-    response = @gateway.purchase(@amount, @credit_card, @options)
+    response = @gateway.purchase(@amount, @credit_card)
     assert_success response
     assert_equal 'Success', response.message
     assert_equal response.params['amount'], @amount
-    assert response.params['paid'], 'paid should be true'
+    assert response.params['captured'], 'captured should be true'
     assert response.params['authorized'], 'authorized should be true'
   end
 
@@ -79,7 +78,7 @@ class RemoteOmiseTest < Test::Unit::TestCase
     authorize = @gateway.authorize(@amount, @credit_card, @options)
     assert_success authorize
     assert_equal authorize.params['amount'], @amount
-    assert !authorize.params['paid'], 'paid should be false'
+    assert !authorize.params['captured'], 'captured should be false'
     assert authorize.params['authorized'], 'authorized should be true'
   end
 
@@ -87,7 +86,7 @@ class RemoteOmiseTest < Test::Unit::TestCase
     authorize = @gateway.authorize(@amount, @credit_card, @options)
     capture   = @gateway.capture(@amount, authorize.authorization, @options)
     assert_success capture
-    assert capture.params['paid'], 'paid should be true'
+    assert capture.params['captured'], 'captured should be true'
     assert capture.params['authorized'], 'authorized should be true'
   end
 

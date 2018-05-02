@@ -17,7 +17,7 @@ module ActiveMerchant #:nodoc:
       # ==== Options
       #
       # * <tt>:login</tt> -- The Inspire Username.
-      # * <tt>:password</tt> -- The Inspire Password.
+      # * <tt>:password</tt> -- The Inspire Passowrd.
       # See the Inspire Integration Guide for details. (default: +false+)
       def initialize(options = {})
         requires!(options, :login, :password)

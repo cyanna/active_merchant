@@ -26,6 +26,7 @@ module ActiveMerchant #:nodoc:
         post[:TransType] = '1'
         add_invoice(post, money, options)
         add_payment_method(post, payment)
+
         commit('sale', post)
       end
 
@@ -34,6 +35,7 @@ module ActiveMerchant #:nodoc:
         post[:TransType] = '5'
         add_invoice(post, money, options)
         add_payment_method(post, payment)
+
         commit('authonly', post)
       end
 
@@ -55,23 +57,12 @@ module ActiveMerchant #:nodoc:
 
       def void(authorization, options={})
         post = {}
-        # TransType, TrAmount, and currency must match original values from auth or purchase.
-        _, _, _, _, _, transtype, tramount, currency = split_authorization(authorization)
+        # TransType and TrAmount must match original values from auth or purchase.
+        _, _, _, _, _, transtype, tramount = split_authorization(authorization)
         post[:TransType] = transtype
-        options[:currency] = options[:currency] || CURRENCY_CODES.key(currency)
         add_invoice(post, tramount.to_i, options)
         add_reference(post, authorization)
         commit('void', post)
-      end
-
-      def supports_scrubbing
-        true
-      end
-
-      def scrub(transcript)
-        transcript.gsub(%r((&lt;PAN&gt;)[^&]*(&lt;/PAN&gt;))i, '\1[FILTERED]\2').
-          gsub(%r((&lt;CVC2&gt;)[^&]*(&lt;/CVC2&gt;))i, '\1[FILTERED]\2').
-          gsub(%r(((?:\r\n)?Authorization: Basic )[^\r\n]+(\r\n)?), '\1[FILTERED]\2')
       end
 
       private
@@ -79,12 +70,10 @@ module ActiveMerchant #:nodoc:
       CURRENCY_CODES = Hash.new{|h,k| raise ArgumentError.new("Unsupported currency for HDFC: #{k}")}
       CURRENCY_CODES["ISK"] = "352"
       CURRENCY_CODES["EUR"] = "978"
-      CURRENCY_CODES["USD"] = "840"
 
       def add_invoice(post, money, options)
         post[:TrAmount] = amount(money)
         post[:TrCurrency] = CURRENCY_CODES[options[:currency] || currency(money)]
-        post[:TerminalID] = options[:terminal_id] || '1'
       end
 
       def add_payment_method(post, payment_method)
@@ -96,8 +85,9 @@ module ActiveMerchant #:nodoc:
       end
 
       def add_reference(post, authorization)
-        dateandtime, batch, transaction, rrn, authcode, _, _, _ = split_authorization(authorization)
+        dateandtime, batch, transaction, rrn, authcode, _, _ = split_authorization(authorization)
         post[:DateAndTime] = dateandtime
+        post[:Batch] = batch
         post[:Transaction] = transaction
         post[:RRN] = rrn
         post[:AuthCode] = authcode
@@ -129,6 +119,7 @@ module ActiveMerchant #:nodoc:
         post[:Version] = '1000'
         post[:Processor] = @options[:processor]
         post[:MerchantID] = @options[:merchant_id]
+        post[:TerminalID] = 1
 
         url = (test? ? test_url : live_url)
         request = build_request(action, post)
@@ -165,14 +156,13 @@ module ActiveMerchant #:nodoc:
           response[:rrn],
           response[:authcode],
           response[:transtype],
-          response[:tramount],
-          response[:trcurrency]
+          response[:tramount]
         ].join("|")
       end
 
       def split_authorization(authorization)
-        dateandtime, batch, transaction, rrn, authcode, transtype, tramount, currency = authorization.split("|")
-        [dateandtime, batch, transaction, rrn, authcode, transtype, tramount, currency]
+        dateandtime, batch, transaction, rrn, authcode, transtype, tramount = authorization.split("|")
+        [dateandtime, batch, transaction, rrn, authcode, transtype, tramount]
       end
 
       def headers

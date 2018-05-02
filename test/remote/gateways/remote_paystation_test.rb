@@ -110,9 +110,4 @@ class RemotePaystationTest < Test::Unit::TestCase
     assert_equal "Error 11:", response.params["strong"]
   end
 
-  def test_successful_verify
-    response = @gateway.verify(@credit_card, @options)
-    assert_success response
-    assert_match %r{Transaction successful}, response.message
-  end
 end

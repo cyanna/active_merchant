@@ -49,20 +49,23 @@ class BaseTest < Test::Unit::TestCase
   def test_should_set_modes
     Base.mode = :test
     assert_equal :test, Base.mode
+    assert_equal :test, Base.gateway_mode
 
     Base.mode = :production
     assert_equal :production, Base.mode
+    assert_equal :production, Base.gateway_mode
 
-    assert_deprecation_warning(Base::GATEWAY_MODE_DEPRECATION_MESSAGE) { Base.gateway_mode = :development }
-    assert_deprecation_warning(Base::GATEWAY_MODE_DEPRECATION_MESSAGE) { assert_equal :development, Base.gateway_mode }
+    Base.mode             = :development
+    Base.gateway_mode     = :test
     assert_equal :development, Base.mode
+    assert_equal :test,        Base.gateway_mode
   end
 
   def test_should_identify_if_test_mode
-    Base.mode = :test
+    Base.gateway_mode = :test
     assert Base.test?
 
-    Base.mode = :production
+    Base.gateway_mode = :production
     assert_false Base.test?
   end
 end

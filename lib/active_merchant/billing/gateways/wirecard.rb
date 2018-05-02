@@ -126,17 +126,6 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      def supports_scrubbing
-        true
-      end
-
-      def scrub(transcript)
-        transcript.
-          gsub(%r((Authorization: Basic )\w+), '\1[FILTERED]').
-          gsub(%r((<CreditCardNumber>)\d+(</CreditCardNumber>)), '\1[FILTERED]\2').
-          gsub(%r((<CVC2>)[^<]+(</CVC2>)), '\1[FILTERED]\2')
-      end
-
       private
       def clean_description(description)
         description.to_s.slice(0,32).encode("US-ASCII", invalid: :replace, undef: :replace, replace: '?')
@@ -235,18 +224,17 @@ module ActiveMerchant #:nodoc:
               add_address(xml, options[:billing_address])
             when :capture, :bookback
               xml.tag! 'GuWID', options[:preauthorization]
-              add_amount(xml, money, options)
+              add_amount(xml, money)
             when :reversal
               xml.tag! 'GuWID', options[:preauthorization]
             end
-            add_customer_data(xml, options)
           end
         end
       end
 
       # Includes the payment (amount, currency, country) to the transaction-xml
       def add_invoice(xml, money, options)
-        add_amount(xml, money, options)
+        add_amount(xml, money)
         xml.tag! 'Currency', options[:currency] || currency(money)
         xml.tag! 'CountryCode', options[:billing_address][:country]
         xml.tag! 'RECURRING_TRANSACTION' do
@@ -255,8 +243,8 @@ module ActiveMerchant #:nodoc:
       end
 
       # Include the amount in the transaction-xml
-      def add_amount(xml, money, options)
-        xml.tag! 'Amount', localized_amount(money, options[:currency] || currency(money))
+      def add_amount(xml, money)
+        xml.tag! 'Amount', amount(money)
       end
 
       # Includes the credit-card data to the transaction-xml
@@ -429,3 +417,4 @@ module ActiveMerchant #:nodoc:
     end
   end
 end
+

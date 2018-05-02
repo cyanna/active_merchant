@@ -8,20 +8,14 @@ module ActiveMerchant #:nodoc:
       base.class_attribute :ssl_version
       base.ssl_version = nil
 
-      base.class_attribute :min_version
-      base.min_version = nil
-
-      base.class_attribute :max_version
-      base.min_version = nil
-
       base.class_attribute :retry_safe
       base.retry_safe = false
 
       base.class_attribute :open_timeout
-      base.open_timeout = Connection::OPEN_TIMEOUT
+      base.open_timeout = 60
 
       base.class_attribute :read_timeout
-      base.read_timeout = Connection::READ_TIMEOUT
+      base.read_timeout = 60
 
       base.class_attribute :max_retries
       base.max_retries = Connection::MAX_RETRIES
@@ -47,7 +41,7 @@ module ActiveMerchant #:nodoc:
 
     def raw_ssl_request(method, endpoint, data, headers = {})
       logger.warn "#{self.class} using ssl_strict=false, which is insecure" if logger unless ssl_strict
-      logger.warn "#{self.class} posting to plaintext endpoint, which is insecure" if logger unless endpoint.to_s =~ /^https:/
+      logger.warn "#{self.class} posting to plaintext endpoint, which is insecure" if logger unless endpoint =~ /^https:/
 
       connection = new_connection(endpoint)
       connection.open_timeout = open_timeout
@@ -59,10 +53,6 @@ module ActiveMerchant #:nodoc:
       connection.max_retries  = max_retries
       connection.tag          = self.class.name
       connection.wiredump_device = wiredump_device
-      if connection.respond_to?(:min_version=)
-        connection.min_version = min_version
-        connection.max_version = max_version
-      end
 
       connection.pem          = @options[:pem] if @options
       connection.pem_password = @options[:pem_password] if @options

@@ -101,7 +101,7 @@ module ActiveMerchant
       #   -options:
       #
       # Returns:
-      #   -ActiveMerchant::Billing::Response object
+      #   -ActiveRecord::Billing::Response object
       #
       def purchase(money, credit_card, options = {})
         post = {}
@@ -129,7 +129,7 @@ module ActiveMerchant
       #   -options:
       #
       # Returns:
-      #   -ActiveMerchant::Billing::Response object
+      #   -ActiveRecord::Billing::Response object
       #
       def authorize(money, credit_card, options = {})
         post = {}
@@ -153,7 +153,7 @@ module ActiveMerchant
       #   -options:
       #
       # Returns:
-      #   -ActiveMerchant::Billing::Response object
+      #   -ActiveRecord::Billing::Response object
       #
       def capture(money, authorization, options = {})
         post = {}

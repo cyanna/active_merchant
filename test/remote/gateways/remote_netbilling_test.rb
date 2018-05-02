@@ -16,8 +16,7 @@ class RemoteNetbillingTest < Test::Unit::TestCase
 
     @options = {
       :billing_address => @address,
-      :description => 'Internet purchase',
-      :order_id => 987654321
+      :description => 'Internet purchase'
     }
 
     @amount = 100
@@ -124,15 +123,5 @@ class RemoteNetbillingTest < Test::Unit::TestCase
     assert void_response = @gateway.void(response.authorization)
     assert_failure void_response
     assert_match(/error/i, void_response.message)
-  end
-
-  def test_transcript_scrubbing
-    transcript = capture_transcript(@gateway) do
-      @gateway.purchase(@amount, @credit_card, @options)
-    end
-    clean_transcript = @gateway.scrub(transcript)
-
-    assert_scrubbed(@credit_card.number, clean_transcript)
-    assert_scrubbed(@credit_card.verification_value.to_s, clean_transcript)
   end
 end

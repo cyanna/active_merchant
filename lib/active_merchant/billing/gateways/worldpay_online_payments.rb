@@ -7,7 +7,7 @@ module ActiveMerchant #:nodoc:
 
       self.money_format = :cents
 
-      self.supported_countries = %w(HK US GB BE CH CZ DE DK ES FI FR GR HU IE IT LU MT NL NO PL PT SE SG TR)
+      self.supported_countries = %w(HK US GB AU AD BE CH CY CZ DE DK ES FI FR GI GR HU IE IL IT LI LU MC MT NL NO NZ PL PT SE SG SI SM TR UM VA)
       self.supported_cardtypes = [:visa, :master, :american_express, :discover, :jcb, :maestro, :laser, :switch]
 
       self.homepage_url = 'http://online.worldpay.com'
@@ -25,14 +25,14 @@ module ActiveMerchant #:nodoc:
         if response.success?
           options[:authorizeOnly] = true
           post = create_post_for_auth_or_purchase(response.authorization, money, options)
-          response = commit(:post, 'orders', post, {}, 'authorize')
+          response = commit(:post, 'orders', post)
         end
         response
       end
 
       def capture(money, authorization, options={})
         if authorization
-          commit(:post, "orders/#{CGI.escape(authorization)}/capture", {"captureAmount"=>money}, options, 'capture')
+          commit(:post, "orders/#{CGI.escape(authorization)}/capture", {"captureAmount"=>money}, options)
         else
           Response.new(false,
             'FAILED',
@@ -50,18 +50,18 @@ module ActiveMerchant #:nodoc:
         response = create_token(true, credit_card.first_name+' '+credit_card.last_name, credit_card.month, credit_card.year, credit_card.number, credit_card.verification_value)
         if response.success?
           post = create_post_for_auth_or_purchase(response.authorization, money, options)
-          response = commit(:post, 'orders', post, options, 'purchase')
+          response = commit(:post, 'orders', post, options)
         end
         response
       end
 
       def refund(money, orderCode, options={})
         obj = money ? {"refundAmount" => money} : {}
-        commit(:post, "orders/#{CGI.escape(orderCode)}/refund", obj, options, 'refund')
+        commit(:post, "orders/#{CGI.escape(orderCode)}/refund", obj, options)
       end
 
       def void(orderCode, options={})
-        response = commit(:delete, "orders/#{CGI.escape(orderCode)}", nil, options, 'void')
+        response = commit(:delete, "orders/#{CGI.escape(orderCode)}", nil, options)
         if !response.success? && (response.params && response.params['customCode'] != 'ORDER_NOT_FOUND')
           response = refund(nil, orderCode)
         end
@@ -87,7 +87,7 @@ module ActiveMerchant #:nodoc:
           },
           "clientKey"=> @client_key
         }
-        token_response = commit(:post, 'tokens', obj, {'Authorization' => @service_key}, 'token')
+        token_response = commit(:post, 'tokens', obj, {'Authorization' => @service_key})
         token_response
       end
 
@@ -131,7 +131,7 @@ module ActiveMerchant #:nodoc:
         headers
       end
 
-      def commit(method, url, parameters=nil, options = {}, type = false)
+      def commit(method, url, parameters=nil, options = {})
         raw_response = response = nil
         success = false
         begin
@@ -141,21 +141,7 @@ module ActiveMerchant #:nodoc:
 
           if (raw_response != '')
             response = parse(raw_response)
-            if type == 'token'
-              success = response.key?('token')
-            else
-              if response.key?('httpStatusCode')
-                success = false
-              else
-                if type == 'authorize' && response['paymentStatus'] == 'AUTHORIZED'
-                  success = true
-                elsif type == 'purchase' && response['paymentStatus'] == 'SUCCESS'
-                  success = true
-                elsif type == 'capture' || type=='refund' || type=='void'
-                  success = true
-                end
-              end
-            end
+            success = !response.key?("httpStatusCode")
           else
             success = true
             response = {}

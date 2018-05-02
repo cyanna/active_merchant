@@ -36,16 +36,7 @@ class RemoteConektaTest < Test::Unit::TestCase
         name: "Mario Reyes",
         phone: "12345678",
       },
-      carrier: "Estafeta",
-      email: "bob@something.com",
-      line_items: [{
-      name: "Box of Cohiba S1s",
-      description: "Imported From Mex.",
-      unit_price: 20000,
-      quantity: 1,
-      sku: "7500244909",
-      type: "food"
-     }]
+      carrier: "Estafeta"
     }
   end
 
@@ -69,30 +60,6 @@ class RemoteConektaTest < Test::Unit::TestCase
     assert response = @gateway.refund(@amount, response.authorization, @options)
     assert_success response
     assert_equal nil, response.message
-  end
-
-  def test_successful_void
-    assert response = @gateway.authorize(@amount, @credit_card, @options)
-    assert_success response
-    assert_equal nil, response.message
-
-    identifier = response.params["id"]
-
-    assert response = @gateway.void(identifier)
-    assert_success response
-    assert_equal nil, response.message
-  end
-
-  def test_unsuccessful_void
-    assert response = @gateway.purchase(@amount, @credit_card, @options)
-    assert_success response
-    assert_equal nil, response.message
-
-    identifier = response.params["id"]
-
-    assert response = @gateway.void(identifier)
-    assert_failure response
-    assert_equal "El cargo no existe o no es apto para esta operación.", response.message
   end
 
   def test_unsuccessful_refund
@@ -141,7 +108,7 @@ class RemoteConektaTest < Test::Unit::TestCase
       },
       line_items: [
         {
-          name: "Box of Cohiba S1s",
+          rname: "Box of Cohiba S1s",
           description: "Imported From Mex.",
           unit_price: 20000,
           quantity: 1,
@@ -166,26 +133,10 @@ class RemoteConektaTest < Test::Unit::TestCase
     assert_equal "Guerrero", response.params['details']['billing_address']['city']
   end
 
-  def test_failed_purchase_with_no_details
-    assert response = @gateway.purchase(@amount, @credit_card, {})
-    assert_failure response
-    assert_equal "Falta el correo del comprador.", response.message
-  end
-
   def test_invalid_key
     gateway = ConektaGateway.new(key: 'invalid_token')
     assert response = gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
     assert_equal "Acceso no autorizado.", response.message
-  end
-
-  def test_transcript_scrubbing
-    transcript = capture_transcript(@gateway) do
-      @gateway.purchase(@amount, @credit_card, @options)
-    end
-    clean_transcript = @gateway.scrub(transcript)
-
-    assert_scrubbed(@credit_card.number, clean_transcript)
-    assert_scrubbed(@credit_card.verification_value.to_s, clean_transcript)
   end
 end

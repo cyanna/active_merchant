@@ -1,8 +1,7 @@
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class GarantiGateway < Gateway
-      self.live_url = 'https://sanalposprov.garanti.com.tr/VPServlet'
-      self.test_url = 'https://sanalposprovtest.garanti.com.tr/VPServlet'
+      self.live_url = self.test_url = 'https://sanalposprov.garanti.com.tr/VPServlet'
 
       # The countries the gateway supports merchants from as 2 digit ISO country codes
       self.supported_countries = ['US','TR']
@@ -218,8 +217,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def commit(money,request)
-        url = test? ? self.test_url : self.live_url
-        raw_response = ssl_post(url, "data=" + request)
+        raw_response = ssl_post(self.live_url, "data=" + request)
         response = parse(raw_response)
 
         success = success?(response)

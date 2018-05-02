@@ -4,14 +4,13 @@ class RemoteElavonTest < Test::Unit::TestCase
   def setup
     @gateway = ElavonGateway.new(fixtures(:elavon))
 
-    @credit_card = credit_card('4124939999999990')
+    @credit_card = credit_card('4111111111111111')
     @bad_credit_card = credit_card('invalid')
 
     @options = {
       :email => "paul@domain.com",
       :description => 'Test Transaction',
-      :billing_address => address,
-      :ip => '203.0.113.0'
+      :billing_address => address
     }
     @amount = 100
   end
@@ -43,16 +42,6 @@ class RemoteElavonTest < Test::Unit::TestCase
     assert_success capture
   end
 
-  def test_authorize_and_capture_with_auth_code
-    assert auth = @gateway.authorize(@amount, @credit_card, @options)
-    assert_success auth
-    assert_equal 'APPROVAL', auth.message
-    assert auth.authorization
-
-    assert capture = @gateway.capture(@amount, auth.authorization)
-    assert_success capture
-  end
-
   def test_unsuccessful_capture
     assert response = @gateway.capture(@amount, '', :credit_card => @credit_card)
     assert_failure response
@@ -60,7 +49,8 @@ class RemoteElavonTest < Test::Unit::TestCase
   end
 
   def test_unsuccessful_authorization
-    assert response = @gateway.authorize(@amount, @bad_credit_card, @options)
+    @credit_card.number = "1234567890123"
+    assert response = @gateway.authorize(@amount, @credit_card, @options)
     assert_failure response
     assert_equal 'The Credit Card Number supplied in the authorization request appears to be invalid.', response.message
   end
@@ -167,7 +157,7 @@ class RemoteElavonTest < Test::Unit::TestCase
   def test_successful_update
     store_response = @gateway.store(@credit_card, @options)
     token = store_response.params["token"]
-    credit_card = credit_card('4124939999999990', :month => 10)
+    credit_card = credit_card('4111111111111111', :month => 10)
     assert response = @gateway.update(token, credit_card, @options)
     assert_success response
     assert response.test?
@@ -176,7 +166,7 @@ class RemoteElavonTest < Test::Unit::TestCase
   def test_unsuccessful_update
     assert response = @gateway.update('ABC123', @credit_card, @options)
     assert_failure response
-    assert_match %r{invalid}i, response.message
+    assert_equal 'Invalid Token', response.message
     assert response.test?
   end
 
@@ -195,25 +185,4 @@ class RemoteElavonTest < Test::Unit::TestCase
     assert response.test?
     assert_match %r{invalid}i, response.message
   end
-
-  def test_successful_purchase_with_custom_fields
-    assert response = @gateway.purchase(@amount, @credit_card, @options.merge(custom_fields: {a_key: "a value"}))
-
-    assert_success response
-    assert response.test?
-    assert_equal 'APPROVAL', response.message
-    assert response.authorization
-  end
-
-  def test_transcript_scrubbing
-    transcript = capture_transcript(@gateway) do
-      @gateway.purchase(@amount, @credit_card, @options)
-    end
-    transcript = @gateway.scrub(transcript)
-
-    assert_scrubbed(@credit_card.number, transcript)
-    assert_scrubbed(@credit_card.verification_value, transcript)
-    assert_scrubbed(@gateway.options[:password], transcript)
-  end
-
 end

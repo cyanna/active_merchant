@@ -75,6 +75,7 @@ module ActiveMerchant #:nodoc:
         commit(post)
       end
 
+
       def refund(money, authorization, options={})
         post = new_request
         add_amount(post, money, options)
@@ -82,10 +83,6 @@ module ActiveMerchant #:nodoc:
         add_refund_specific_fields(post, authorization)
 
         commit(post)
-      end
-
-      def verify(credit_card, options={})
-        authorize(0, credit_card, options)
       end
 
       private
@@ -105,9 +102,9 @@ module ActiveMerchant #:nodoc:
         end
 
         def add_invoice(post, options)
-          post[:ms] = generate_unique_id
-          post[:mo] = options[:description]
-          post[:mr] = options[:order_id]
+          post[:ms] = options[:order_id] || generate_unique_id
+          post[:mo] = options[:invoice]
+          post[:mr] = options[:description]
         end
 
         def add_credit_card(post, credit_card)
@@ -195,3 +192,4 @@ module ActiveMerchant #:nodoc:
     end
   end
 end
+

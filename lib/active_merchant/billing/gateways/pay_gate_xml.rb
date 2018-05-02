@@ -52,7 +52,7 @@ module ActiveMerchant #:nodoc:
     #
     # PayGateXML Field        ActiveMerchant Use
     #
-    # pgid                    use :login value to gateway instantiation
+    # pgid                    use :login value to gateway instantation
     # pwd                     use :password value to gateway instantiation
     #
     # cname                   credit_card.name

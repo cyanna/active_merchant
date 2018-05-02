@@ -134,29 +134,6 @@ module ActiveMerchant #:nodoc:
       # @return [String] the verification value
       attr_accessor :verification_value
 
-      # Sets if the credit card requires a verification value.
-      #
-      # @return [Boolean]
-      def require_verification_value=(value)
-        @require_verification_value_set = true
-        @require_verification_value = value
-      end
-
-      # Returns if this credit card needs a verification value.
-      #
-      # By default this returns the configured value from `CreditCard.require_verification_value`,
-      # but one can set a per instance requirement with `credit_card.require_verification_value = false`.
-      #
-      # @return [Boolean]
-      def requires_verification_value?
-        @require_verification_value_set ||= false
-        if @require_verification_value_set
-          @require_verification_value
-        else
-          self.class.requires_verification_value?
-        end
-      end
-
       # Returns or sets the track data for the card
       #
       # @return [String]
@@ -176,20 +153,16 @@ module ActiveMerchant #:nodoc:
       # @return [String]
       attr_accessor :icc_data
 
-      # Returns or sets information about the source of the card data.
+      # Returns or sets a fallback reason for a EMV transaction whereby the customer's card entered a fallback scenario.
+      # This can be an arbitrary string.
       #
       # @return [String]
-      attr_accessor :read_method
+      attr_accessor :fallback_reason
 
-      READ_METHOD_DESCRIPTIONS = {
-        nil => 'A card reader was not used.',
-        'fallback_no_chip' => 'Magstripe was read because the card has no chip.',
-        'fallback_chip_error' => "Magstripe was read because the card's chip failed.",
-        'contactless' => 'Data was read by a Contactless EMV kernel. Issuer script results are not available.',
-        'contactless_magstripe' => 'Contactless data was read with a non-EMV protocol.',
-        'contact' => 'Data was read using the EMV protocol. Issuer script results may follow.',
-        'contact_quickchip' => 'Data was read by the Quickchip EMV kernel. Issuer script results are not available.',
-      }
+      # Returns or sets whether card-present card data has been read contactlessly.
+      #
+      # @return [true, false]
+      attr_accessor :contactless
 
       # Returns the ciphertext of the card's encrypted PIN.
       #
@@ -244,7 +217,7 @@ module ActiveMerchant #:nodoc:
       #
       # @return [String] the full name of the card holder
       def name
-        "#{first_name} #{last_name}".strip
+        [first_name, last_name].compact.join(' ')
       end
 
       def name=(full_name)
@@ -373,7 +346,7 @@ module ActiveMerchant #:nodoc:
           unless valid_card_verification_value?(verification_value, brand)
             errors << [:verification_value, "should be #{card_verification_value_length(brand)} digits"]
           end
-        elsif requires_verification_value?
+        elsif self.class.requires_verification_value?
           errors << [:verification_value, "is required"]
         end
         errors

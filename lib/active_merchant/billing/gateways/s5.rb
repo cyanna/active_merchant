@@ -29,7 +29,6 @@ module ActiveMerchant #:nodoc:
 
       def purchase(money, payment, options={})
         request = build_xml_request do |xml|
-          add_identification(xml, options)
           add_payment(xml, money, 'sale', options)
           add_account(xml, payment)
           add_customer(xml, payment, options)
@@ -41,7 +40,7 @@ module ActiveMerchant #:nodoc:
 
       def refund(money, authorization, options={})
         request = build_xml_request do |xml|
-          add_identification(xml, options, authorization)
+          add_identification(xml, authorization)
           add_payment(xml, money, 'refund', options)
         end
 
@@ -50,7 +49,6 @@ module ActiveMerchant #:nodoc:
 
       def authorize(money, payment, options={})
         request = build_xml_request do |xml|
-          add_identification(xml, options)
           add_payment(xml, money, 'authonly', options)
           add_account(xml, payment)
           add_customer(xml, payment, options)
@@ -62,7 +60,7 @@ module ActiveMerchant #:nodoc:
 
       def capture(money, authorization, options={})
         request = build_xml_request do |xml|
-          add_identification(xml, options, authorization)
+          add_identification(xml, authorization)
           add_payment(xml, money, 'capture', options)
         end
 
@@ -71,7 +69,7 @@ module ActiveMerchant #:nodoc:
 
       def void(authorization, options={})
         request = build_xml_request do |xml|
-          add_identification(xml, options, authorization)
+          add_identification(xml, authorization)
           add_payment(xml, nil, 'void', options)
         end
 
@@ -83,7 +81,6 @@ module ActiveMerchant #:nodoc:
           xml.Payment(code: SUPPORTED_TRANSACTIONS["store"])
           add_account(xml, payment)
           add_customer(xml, payment, options)
-          add_recurrence_mode(xml, options)
         end
 
         commit(request)
@@ -110,10 +107,9 @@ module ActiveMerchant #:nodoc:
 
       private
 
-      def add_identification(xml, options, authorization = nil)
+      def add_identification(xml, authorization)
         xml.Identification do
-          xml.TransactionID options[:order_id] if options[:order_id]
-          xml.ReferenceID authorization if authorization
+          xml.ReferenceID authorization
         end
       end
 

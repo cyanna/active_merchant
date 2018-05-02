@@ -100,7 +100,12 @@ module ActiveMerchant
       def add_billing_address(post, options)
         address = options[:billing_address] || {}
 
-        post[:bill_name1], post[:bill_name2] = split_names(address[:name])
+        if address[:name]
+          names = address[:name].split
+          post[:bill_name2] = names.pop
+          post[:bill_name1] = names.join(" ")
+        end
+
         post[:bill_street] = address[:address1] if address[:address1]
         post[:bill_city] = address[:city] if address[:city]
         post[:bill_state] = address[:state] if address[:state]
@@ -112,7 +117,12 @@ module ActiveMerchant
       def add_shipping_address(post, options)
         address = options[:shipping_address] || {}
 
-        post[:ship_name1], post[:ship_name2] = split_names(address[:name])
+        if address[:name]
+          names = address[:name].split
+          post[:ship_name2] = names.pop
+          post[:ship_name1] = names.join(" ")
+        end
+
         post[:ship_street] = address[:address1] if address[:address1]
         post[:ship_city] = address[:city] if address[:city]
         post[:ship_state] = address[:state] if address[:state]

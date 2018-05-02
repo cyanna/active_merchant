@@ -5,10 +5,9 @@ class PsigateRemoteTest < Test::Unit::TestCase
   def setup
     Base.mode = :test
     @gateway = PsigateGateway.new(fixtures(:psigate))
-    PsigateGateway.ssl_strict = false
 
     @amount = 2400
-    @creditcard = credit_card('4111111111111111')
+    @creditcard = credit_card('4242424242424242')
     @options = {
       :order_id => generate_unique_id,
       :billing_address => address,

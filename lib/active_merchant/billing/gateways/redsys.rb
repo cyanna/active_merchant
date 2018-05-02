@@ -24,16 +24,6 @@ module ActiveMerchant #:nodoc:
     #
     # Written by Samuel Lown for Cabify. For implementation questions, or
     # test access details please get in touch: sam@cabify.com.
-    #
-    # *** SHA256 Authentication Update ***
-    #
-    # Redsys is dropping support for the SHA1 authentication method. This
-    # adapter has been updated to work with the new SHA256 authentication
-    # method, however in your initialization options hash you will need to
-    # specify the key/value :signature_algorithm => "sha256" to use the
-    # SHA256 method. Otherwise it will default to using the SHA1.
-    #
-    #
     class RedsysGateway < Gateway
       self.live_url = "https://sis.sermepa.es/sis/operaciones"
       self.test_url = "https://sis-t.redsys.es:25443/sis/operaciones"
@@ -48,7 +38,6 @@ module ActiveMerchant #:nodoc:
       self.display_name        = "Redsys"
 
       CURRENCY_CODES = {
-        "AED" => '784',
         "ARS" => '32',
         "AUD" => '36',
         "BRL" => '986',
@@ -56,32 +45,17 @@ module ActiveMerchant #:nodoc:
         "CAD" => '124',
         "CHF" => '756',
         "CLP" => '152',
-        "CNY" => '156',
         "COP" => '170',
-        "CRC" => '188',
-        "CZK" => '203',
-        "DKK" => '208',
-        "DOP" => '214',
         "EUR" => '978',
         "GBP" => '826',
         "GTQ" => '320',
-        "HUF" => '348',
-        "IDR" => '360',
-        "INR" => '356',
         "JPY" => '392',
-        "KRW" => '410',
         "MYR" => '458',
         "MXN" => '484',
-        "NOK" => '578',
         "NZD" => '554',
         "PEN" => '604',
-        "PLN" => '616',
         "RUB" => '643',
-        "SAR" => '682',
-        "SEK" => '752',
         "SGD" => '702',
-        "THB" => '764',
-        "TWD" => '901',
         "USD" => '840',
         "UYU" => '858'
       }
@@ -180,11 +154,9 @@ module ActiveMerchant #:nodoc:
       # * <tt>:secret_key</tt> -- The Redsys Secret Key. (REQUIRED)
       # * <tt>:terminal</tt> -- The Redsys Terminal. Defaults to 1. (OPTIONAL)
       # * <tt>:test</tt> -- +true+ or +false+. Defaults to +false+. (OPTIONAL)
-      # * <tt>:signature_algorithm</tt> -- +"sha256"+ Defaults to +"sha1"+. (OPTIONAL)
       def initialize(options = {})
         requires!(options, :login, :secret_key)
         options[:terminal] ||= 1
-        options[:signature_algorithm] ||= "sha1"
         super
       end
 
@@ -256,25 +228,6 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      def supports_scrubbing
-        true
-      end
-
-      def scrub(transcript)
-        transcript.
-          gsub(%r((Authorization: Basic )\w+), '\1[FILTERED]').
-          gsub(%r((%3CDS_MERCHANT_PAN%3E)\d+(%3C%2FDS_MERCHANT_PAN%3E))i, '\1[FILTERED]\2').
-          gsub(%r((%3CDS_MERCHANT_CVV2%3E)\d+(%3C%2FDS_MERCHANT_CVV2%3E))i, '\1[FILTERED]\2').
-          gsub(%r((<DS_MERCHANT_PAN>)\d+(</DS_MERCHANT_PAN>))i, '\1[FILTERED]\2').
-          gsub(%r((<DS_MERCHANT_CVV2>)\d+(</DS_MERCHANT_CVV2>))i, '\1[FILTERED]\2').
-          gsub(%r((DS_MERCHANT_CVV2)%2F%3E%0A%3C%2F)i, '\1[BLANK]').
-          gsub(%r((DS_MERCHANT_CVV2)%2F%3E%3C)i, '\1[BLANK]').
-          gsub(%r((DS_MERCHANT_CVV2%3E)(%3C%2FDS_MERCHANT_CVV2))i, '\1[BLANK]\2').
-          gsub(%r((<DS_MERCHANT_CVV2>)(</DS_MERCHANT_CVV2>))i, '\1[BLANK]\2').
-          gsub(%r((DS_MERCHANT_CVV2%3E)\++(%3C%2FDS_MERCHANT_CVV2))i, '\1[BLANK]\2').
-          gsub(%r((<DS_MERCHANT_CVV2>)\s+(</DS_MERCHANT_CVV2>))i, '\1[BLANK]\2')
-      end
-
       private
 
       def add_action(data, action)
@@ -311,28 +264,18 @@ module ActiveMerchant #:nodoc:
       end
 
       def commit(data)
-        parse(ssl_post(url, "entrada=#{CGI.escape(xml_request_from(data))}", headers))
-      end
-
-      def headers
-        {
+        headers = {
           'Content-Type' => 'application/x-www-form-urlencoded'
         }
-      end
-
-      def xml_request_from(data)
-        if sha256_authentication?
-          build_sha256_xml_request(data)
-        else
-          build_sha1_xml_request(data)
-        end
+        xml = build_xml_request(data)
+        parse(ssl_post(url, "entrada=#{CGI.escape(xml)}", headers))
       end
 
       def build_signature(data)
         str = data[:amount] +
-          data[:order_id].to_s +
-          @options[:login].to_s +
-          data[:currency]
+              data[:order_id].to_s +
+              @options[:login].to_s +
+              data[:currency]
 
         if card = data[:card]
           str << card[:pan]
@@ -350,30 +293,8 @@ module ActiveMerchant #:nodoc:
         Digest::SHA1.hexdigest(str)
       end
 
-      def build_sha256_xml_request(data)
-        xml = Builder::XmlMarkup.new
-        xml.instruct!
-        xml.REQUEST do
-          build_merchant_data(xml, data)
-          xml.DS_SIGNATUREVERSION 'HMAC_SHA256_V1'
-          xml.DS_SIGNATURE sign_request(merchant_data_xml(data), data[:order_id])
-        end
-        xml.target!
-      end
-
-      def build_sha1_xml_request(data)
+      def build_xml_request(data)
         xml = Builder::XmlMarkup.new :indent => 2
-        build_merchant_data(xml, data)
-        xml.target!
-      end
-
-      def merchant_data_xml(data)
-        xml = Builder::XmlMarkup.new
-        build_merchant_data(xml, data)
-        xml.target!
-      end
-
-      def build_merchant_data(xml, data)
         xml.DATOSENTRADA do
           # Basic elements
           xml.DS_Version 0.1
@@ -384,7 +305,7 @@ module ActiveMerchant #:nodoc:
           xml.DS_MERCHANT_PRODUCTDESCRIPTION data[:description]
           xml.DS_MERCHANT_TERMINAL           @options[:terminal]
           xml.DS_MERCHANT_MERCHANTCODE       @options[:login]
-          xml.DS_MERCHANT_MERCHANTSIGNATURE  build_signature(data) unless sha256_authentication?
+          xml.DS_MERCHANT_MERCHANTSIGNATURE  build_signature(data)
 
           # Only when card is present
           if data[:card]
@@ -397,6 +318,7 @@ module ActiveMerchant #:nodoc:
             xml.DS_MERCHANT_IDENTIFIER data[:credit_card_token]
           end
         end
+        xml.target!
       end
 
       def parse(data)
@@ -428,23 +350,18 @@ module ActiveMerchant #:nodoc:
       end
 
       def validate_signature(data)
-        if sha256_authentication?
-          sig = Base64.strict_encode64(mac256(get_key(data[:ds_order].to_s), xml_signed_fields(data)))
-          sig.upcase == data[:ds_signature].to_s.upcase
-        else
-          str = data[:ds_amount] +
-            data[:ds_order].to_s +
-            data[:ds_merchantcode] +
-            data[:ds_currency] +
-            data[:ds_response] +
-            data[:ds_cardnumber].to_s +
-            data[:ds_transactiontype].to_s +
-            data[:ds_securepayment].to_s +
-            @options[:secret_key]
+        str = data[:ds_amount] +
+              data[:ds_order].to_s +
+              data[:ds_merchantcode] +
+              data[:ds_currency] +
+              data[:ds_response] +
+              data[:ds_cardnumber].to_s +
+              data[:ds_transactiontype].to_s +
+              data[:ds_securepayment].to_s +
+              @options[:secret_key]
 
-          sig = Digest::SHA1.hexdigest(str)
-          data[:ds_signature].to_s.downcase == sig
-        end
+        sig = Digest::SHA1.hexdigest(str)
+        data[:ds_signature].to_s.downcase == sig
       end
 
       def build_authorization(params)
@@ -483,43 +400,6 @@ module ActiveMerchant #:nodoc:
         else
           "%04d%s" % [rand(0..9999), cleansed[0...8]]
         end
-      end
-
-      def sha256_authentication?
-        @options[:signature_algorithm] == "sha256"
-      end
-
-      def sign_request(xml_request_string, order_id)
-        key = encrypt(@options[:secret_key], order_id)
-        Base64.strict_encode64(mac256(key, xml_request_string))
-      end
-
-      def encrypt(key, order_id)
-        block_length = 8
-        cipher = OpenSSL::Cipher.new('DES3')
-        cipher.encrypt
-
-        cipher.key = Base64.strict_decode64(key)
-        # The OpenSSL default of an all-zeroes ("\\0") IV is used.
-        cipher.padding = 0
-
-        order_id += "\0" until order_id.bytesize % block_length == 0 # Pad with zeros
-
-        output = cipher.update(order_id) + cipher.final
-        output
-      end
-
-      def mac256(key, data)
-        OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), key, data)
-      end
-
-      def xml_signed_fields(data)
-        data[:ds_amount] + data[:ds_order] + data[:ds_merchantcode] + data[:ds_currency] +
-          data[:ds_response] + data[:ds_transactiontype] + data[:ds_securepayment]
-      end
-
-      def get_key(order_id)
-        encrypt(@options[:secret_key], order_id)
       end
     end
   end

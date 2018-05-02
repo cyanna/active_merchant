@@ -2,7 +2,7 @@ require 'test_helper'
 
 class RemotePayflowTest < Test::Unit::TestCase
   def setup
-    Base.mode = :test
+    ActiveMerchant::Billing::Base.gateway_mode = :test
 
     @gateway = PayflowGateway.new(fixtures(:payflow))
 
@@ -17,14 +17,6 @@ class RemotePayflowTest < Test::Unit::TestCase
       :customer => 'codyexample'
     }
 
-    @extra_options = {
-      :order_id => "123",
-      :description => "Description string",
-      :order_desc => "OrderDesc string",
-      :comment => "Comment string",
-      :comment2 => "Comment2 string"
-    }
-
     @check = check(
       :routing_number => '111111118',
       :account_number => '1234567801'
@@ -33,15 +25,6 @@ class RemotePayflowTest < Test::Unit::TestCase
 
   def test_successful_purchase
     assert response = @gateway.purchase(100000, @credit_card, @options)
-    assert_equal "Approved", response.message
-    assert_success response
-    assert response.test?
-    assert_not_nil response.authorization
-    assert !response.fraud_review?
-  end
-
-  def test_successful_purchase_with_extra_options
-    assert response = @gateway.purchase(100000, @credit_card, @options.merge(@extra_options))
     assert_equal "Approved", response.message
     assert_success response
     assert response.test?
@@ -106,15 +89,6 @@ class RemotePayflowTest < Test::Unit::TestCase
     assert_success capture
   end
 
-  def test_authorize_and_capture_with_three_d_secure_option
-    assert auth = @gateway.authorize(100, @credit_card, @options.merge(three_d_secure_option))
-    assert_success auth
-    assert_equal 'Approved', auth.message
-    assert auth.authorization
-    assert capture = @gateway.capture(100, auth.authorization)
-    assert_success capture
-  end
-
   def test_authorize_and_partial_capture
     assert auth = @gateway.authorize(100 * 2, @credit_card, @options)
     assert_success auth
@@ -144,16 +118,6 @@ class RemotePayflowTest < Test::Unit::TestCase
     assert response = @gateway.verify(@credit_card, @options)
     assert_success response
     assert_equal "Verified", response.message
-  end
-
-  def test_successful_verify_amex
-    @amex_credit_card = credit_card(
-      '378282246310005',
-      :brand => 'american_express'
-    )
-    assert response = @gateway.verify(@amex_credit_card, @options)
-    assert_success response
-    assert_equal "Approved", response.message
   end
 
   def test_failed_verify
@@ -321,25 +285,6 @@ class RemotePayflowTest < Test::Unit::TestCase
     assert_success credit
   end
 
-  def test_verify_credentials
-    assert @gateway.verify_credentials
-
-    gateway = PayflowGateway.new(login: "unknown_login", password: "unknown_password", partner: "PayPal")
-    assert !gateway.verify_credentials
-  end
-
-  def test_purchase_and_refund_with_three_d_secure_option
-    amount = 100
-
-    assert purchase = @gateway.purchase(amount, @credit_card, @options.merge(three_d_secure_option))
-    assert_success purchase
-    assert_equal 'Approved', purchase.message
-    assert !purchase.authorization.blank?
-
-    assert credit = @gateway.refund(amount, purchase.authorization)
-    assert_success credit
-  end
-
   # The default security setting for Payflow Pro accounts is Allow
   # non-referenced credits = No.
   #
@@ -364,36 +309,5 @@ class RemotePayflowTest < Test::Unit::TestCase
     @gateway.options[:verbosity] = 'HIGH'
     assert response = @gateway.purchase(100, @credit_card, @options)
     assert_match %r{^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}}, response.params['transaction_time']
-  end
-
-  def three_d_secure_option
-    {
-        :three_d_secure => {
-            :status => 'Y',
-            :authentication_id => 'QvDbSAxSiaQs241899E0',
-            :eci => '02',
-            :cavv => 'jGvQIvG/5UhjAREALGYa6Vu/hto=',
-            :xid => 'UXZEYlNBeFNpYVFzMjQxODk5RTA='
-        }
-    }
-  end
-
-  def test_transcript_scrubbing
-    transcript = capture_transcript(@gateway) do
-      @gateway.purchase(@amount, @credit_card, @options)
-    end
-    transcript = @gateway.scrub(transcript)
-
-    assert_scrubbed(@credit_card.number, transcript)
-    assert_scrubbed(@credit_card.verification_value, transcript)
-    assert_scrubbed(@gateway.options[:password], transcript)
-
-    transcript = capture_transcript(@gateway) do
-      @gateway.purchase(50, @check)
-    end
-    transcript = @gateway.scrub(transcript)
-
-    assert_scrubbed(@check.account_number, transcript)
-    assert_scrubbed(@gateway.options[:password], transcript)
   end
 end

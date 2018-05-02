@@ -78,7 +78,6 @@ module ActiveMerchant #:nodoc:
         post = {}
         capture_uri = "#{ENDPOINT}/#{CGI.escape(authorization)}/capture"
         post[:amount] = localized_amount(money, currency(money))
-        add_context(post, options)
 
         commit(capture_uri, post)
       end
@@ -86,7 +85,6 @@ module ActiveMerchant #:nodoc:
       def refund(money, authorization, options = {})
         post = {}
         post[:amount] = localized_amount(money, currency(money))
-        add_context(post, options)
 
         commit(refund_uri(authorization), post)
       end
@@ -139,7 +137,6 @@ module ActiveMerchant #:nodoc:
 
       def add_payment(post, payment, options = {})
         add_creditcard(post, payment, options)
-        add_context(post, options)
       end
 
       def add_creditcard(post, creditcard, options = {})
@@ -152,13 +149,6 @@ module ActiveMerchant #:nodoc:
         card[:commercialCardCode] = options[:card_code] if options[:card_code]
 
         post[:card] = card
-      end
-
-      def add_context(post, options = {})
-        post[:context] = {
-          mobile: options.fetch(:mobile, false),
-          isEcommerce: options.fetch(:ecommerce, true)
-        }
       end
 
       def parse(body)

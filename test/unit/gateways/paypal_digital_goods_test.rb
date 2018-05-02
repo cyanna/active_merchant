@@ -13,21 +13,21 @@ class PaypalDigitalGoodsTest < Test::Unit::TestCase
       :pem => 'PEM'
     )
 
-    Base.mode = :test
+    Base.gateway_mode = :test
   end
 
   def teardown
-    Base.mode = :test
+    Base.gateway_mode = :test
   end
 
   def test_live_redirect_url
-    Base.mode = :production
+    Base.gateway_mode = :production
     assert_equal LIVE_REDIRECT_URL, @gateway.redirect_url_for('1234567890')
     assert_equal MOBILE_LIVE_REDIRECT_URL, @gateway.redirect_url_for('1234567890', mobile: true)
   end
 
   def test_test_redirect_url
-    assert_equal :test, Base.mode
+    assert_equal :test, Base.gateway_mode
     assert_equal TEST_REDIRECT_URL, @gateway.redirect_url_for('1234567890')
     assert_equal MOBILE_TEST_REDIRECT_URL, @gateway.redirect_url_for('1234567890', mobile: true)
   end

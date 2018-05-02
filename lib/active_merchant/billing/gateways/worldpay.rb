@@ -6,10 +6,8 @@ module ActiveMerchant #:nodoc:
 
       self.default_currency = 'GBP'
       self.money_format = :cents
-      self.supported_countries = %w(HK GB AU AD BE CH CY CZ DE DK ES FI FR GI GR HU IE IT LI LU MC MT NL NO NZ PL PT SE SG SI SM TR UM VA)
+      self.supported_countries = %w(HK GB AU AD BE CH CY CZ DE DK ES FI FR GI GR HU IE IL IT LI LU MC MT NL NO NZ PL PT SE SG SI SM TR UM VA)
       self.supported_cardtypes = [:visa, :master, :american_express, :discover, :jcb, :maestro, :laser, :switch]
-      self.currencies_without_fractions = %w(HUF IDR ISK JPY KRW)
-      self.currencies_with_three_decimal_places = %w(BHD KWD OMR RSD TND)
       self.homepage_url = 'http://www.worldpay.com/'
       self.display_name = 'Worldpay Global'
 
@@ -55,47 +53,16 @@ module ActiveMerchant #:nodoc:
 
       def void(authorization, options = {})
         MultiResponse.run do |r|
-          r.process{inquire_request(authorization, options, "AUTHORISED")} unless options[:authorization_validated]
+          r.process{inquire_request(authorization, options, "AUTHORISED")}
           r.process{cancel_request(authorization, options)}
         end
       end
 
       def refund(money, authorization, options = {})
-        response = MultiResponse.run do |r|
-          r.process { inquire_request(authorization, options, "CAPTURED", "SETTLED", "SETTLED_BY_MERCHANT") }
-          r.process { refund_request(money, authorization, options) }
+        MultiResponse.run do |r|
+          r.process{inquire_request(authorization, options, "CAPTURED", "SETTLED", "SETTLED_BY_MERCHANT")}
+          r.process{refund_request(money, authorization, options)}
         end
-
-        return response if response.success?
-        return response unless options[:force_full_refund_if_unsettled]
-
-        void(authorization, options ) if response.params["last_event"] == "AUTHORISED"
-      end
-
-      # Credits only function on a Merchant ID/login/profile flagged for Payouts
-      #   aka Credit Fund Transfers (CFT), whereas normal purchases, refunds,
-      #   and other transactions should be performed on a normal eCom-flagged
-      #   merchant ID.
-      def credit(money, payment_method, options = {})
-        credit_request(money, payment_method, options.merge(:credit => true))
-      end
-
-      def verify(credit_card, options={})
-        MultiResponse.run(:use_first_response) do |r|
-          r.process { authorize(100, credit_card, options) }
-          r.process(:ignore_result) { void(r.authorization, options.merge(:authorization_validated => true)) }
-        end
-      end
-
-      def supports_scrubbing
-        true
-      end
-
-      def scrub(transcript)
-        transcript.
-          gsub(%r((Authorization: Basic )\w+), '\1[FILTERED]').
-          gsub(%r((<cardNumber>)\d+(</cardNumber>)), '\1[FILTERED]\2').
-          gsub(%r((<cvc>)[^<]+(</cvc>)), '\1[FILTERED]\2')
       end
 
       private
@@ -118,10 +85,6 @@ module ActiveMerchant #:nodoc:
 
       def refund_request(money, authorization, options)
         commit('refund', build_refund_request(money, authorization, options), :ok)
-      end
-
-      def credit_request(money, payment_method, options)
-        commit('credit', build_authorization_request(money, payment_method, options), :ok)
       end
 
       def build_request
@@ -155,7 +118,7 @@ module ActiveMerchant #:nodoc:
       def build_authorization_request(money, payment_method, options)
         build_request do |xml|
           xml.tag! 'submit' do
-            xml.tag! 'order', order_tag_attributes(options) do
+            xml.tag! 'order', {'orderCode' => options[:order_id], 'installationId' => @options[:inst_id]}.reject{|_,v| !v} do
               xml.description(options[:description].blank? ? "Purchase" : options[:description])
               add_amount(xml, money, options)
               if options[:order_content]
@@ -165,16 +128,9 @@ module ActiveMerchant #:nodoc:
               end
               add_payment_method(xml, money, payment_method, options)
               add_email(xml, options)
-              if options[:hcg_additional_data]
-                add_hcg_additional_data(xml, options)
-              end
             end
           end
         end
-      end
-
-      def order_tag_attributes(options)
-        { 'orderCode' => options[:order_id], 'installationId' => options[:inst_id] || @options[:inst_id] }.reject{|_,v| !v}
       end
 
       def build_capture_request(money, authorization, options)
@@ -203,11 +159,12 @@ module ActiveMerchant #:nodoc:
 
       def add_amount(xml, money, options)
         currency = options[:currency] || currency(money)
+        amount   = localized_amount(money, currency)
 
         amount_hash = {
-          :value => localized_amount(money, currency),
+          :value => amount,
           'currencyCode' => currency,
-          'exponent' => currency_exponent(currency)
+          'exponent' => 2
         }
 
         if options[:debit_credit_indicator]
@@ -229,7 +186,7 @@ module ActiveMerchant #:nodoc:
             end
           end
         else
-          xml.tag! 'paymentDetails', credit_fund_transfer_attribute(options) do
+          xml.tag! 'paymentDetails' do
             xml.tag! CARD_CODES[card_brand(payment_method)] do
               xml.tag! 'cardNumber', payment_method.number
               xml.tag! 'expiryDate' do
@@ -241,11 +198,8 @@ module ActiveMerchant #:nodoc:
 
               add_address(xml, (options[:billing_address] || options[:address]))
             end
-            if options[:ip] && options[:session_id]
-              xml.tag! 'session', 'shopperIPAddress' => options[:ip], 'id' => options[:session_id]
-            else
-              xml.tag! 'session', 'shopperIPAddress' => options[:ip] if options[:ip]
-              xml.tag! 'session', 'id' => options[:session_id] if options[:session_id]
+            if options[:ip]
+              xml.tag! 'session', 'shopperIPAddress' => options[:ip]
             end
           end
         end
@@ -259,8 +213,6 @@ module ActiveMerchant #:nodoc:
       end
 
       def add_address(xml, address)
-        return unless address
-
         address = address_with_defaults(address)
 
         xml.tag! 'cardAddress' do
@@ -276,14 +228,6 @@ module ActiveMerchant #:nodoc:
             xml.tag! 'state', address[:state]
             xml.tag! 'countryCode', address[:country]
             xml.tag! 'telephoneNumber', address[:phone] if address[:phone]
-          end
-        end
-      end
-
-      def add_hcg_additional_data(xml, options)
-        xml.tag! 'hcgAdditionalData' do
-          options[:hcg_additional_data].each do |k, v|
-            xml.tag! "param", {name: k.to_s}, v
           end
         end
       end
@@ -331,7 +275,6 @@ module ActiveMerchant #:nodoc:
           message,
           raw,
           :authorization => authorization_from(raw),
-          :error_code => error_code_from(success, raw),
           :test => test?)
 
       rescue ActiveMerchant::ResponseError => e
@@ -361,12 +304,6 @@ module ActiveMerchant #:nodoc:
         [ success, message ]
       end
 
-      def error_code_from(success, raw)
-        unless success == "SUCCESS"
-          raw[:iso8583_return_code_code] || raw[:error_code] || nil
-        end
-      end
-
       def required_status_message(raw, success_criteria)
         if(!success_criteria.include?(raw[:last_event]))
           "A transaction status of #{success_criteria.collect{|c| "'#{c}'"}.join(" or ")} is required."
@@ -378,20 +315,16 @@ module ActiveMerchant #:nodoc:
         (pair ? pair.last : nil)
       end
 
-      def credit_fund_transfer_attribute(options)
-        return unless options[:credit]
-        {'action' => "REFUND"}
-      end
-
       def encoded_credentials
         credentials = "#{@options[:login]}:#{@options[:password]}"
         "Basic #{[credentials].pack('m').strip}"
       end
 
-      def currency_exponent(currency)
-        return 0 if non_fractional_currency?(currency)
-        return 3 if three_decimal_currency?(currency)
-        return 2
+      def localized_amount(money, currency)
+        amount = amount(money)
+        return amount unless CURRENCIES_WITHOUT_FRACTIONS.include?(currency.to_s)
+
+        amount.to_i / 100 * 100
       end
     end
   end

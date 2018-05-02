@@ -2,7 +2,7 @@ require 'test_helper'
 
 class RemotePayflowUkTest < Test::Unit::TestCase
   def setup
-    Base.mode = :test
+    ActiveMerchant::Billing::Base.gateway_mode = :test
 
     # The default partner is PayPalUk
     @gateway = PayflowUkGateway.new(fixtures(:payflow_uk))

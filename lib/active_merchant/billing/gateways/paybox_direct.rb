@@ -67,8 +67,6 @@ module ActiveMerchant #:nodoc:
         post = {}
         add_invoice(post, options)
         add_creditcard(post, creditcard)
-        add_amount(post, money, options)
-
         commit('authorization', money, post)
       end
 
@@ -76,8 +74,6 @@ module ActiveMerchant #:nodoc:
         post = {}
         add_invoice(post, options)
         add_creditcard(post, creditcard)
-        add_amount(post, money, options)
-
         commit('purchase', money, post)
       end
 
@@ -85,10 +81,8 @@ module ActiveMerchant #:nodoc:
         requires!(options, :order_id)
         post = {}
         add_invoice(post, options)
-        add_amount(post, money, options)
         post[:numappel] = authorization[0,10]
         post[:numtrans] = authorization[10,10]
-
         commit('capture', money, post)
       end
 
@@ -97,10 +91,8 @@ module ActiveMerchant #:nodoc:
         post ={}
         add_invoice(post, options)
         add_reference(post, identification)
-        add_amount(post, options[:amount], options)
         post[:porteur] = '000000000000000'
         post[:dateval] = '0000'
-
         commit('void', options[:amount], post)
       end
 
@@ -113,7 +105,6 @@ module ActiveMerchant #:nodoc:
         post = {}
         add_invoice(post, options)
         add_reference(post, identification)
-        add_amount(post, money, options)
         commit('refund', money, post)
       end
 
@@ -134,11 +125,6 @@ module ActiveMerchant #:nodoc:
         post[:numtrans] = identification[10,10]
       end
 
-      def add_amount(post, money, options)
-        post[:montant] = ('0000000000' + (money ? amount(money) : ''))[-10..-1]
-        post[:devise] = CURRENCY_CODES[options[:currency] || currency(money)]
-      end
-
       def parse(body)
         results = {}
         body.split(/&/).each do |pair|
@@ -149,6 +135,8 @@ module ActiveMerchant #:nodoc:
       end
 
       def commit(action, money = nil, parameters = nil)
+        parameters[:montant] = ('0000000000' + (money ? amount(money) : ''))[-10..-1]
+        parameters[:devise] = CURRENCY_CODES[options[:currency] || currency(money)]
         request_data = post_data(action,parameters)
         response = parse(ssl_post(test? ? self.test_url : self.live_url, request_data))
         response = parse(ssl_post(self.live_url_backup, request_data)) if service_unavailable?(response) && !test?
@@ -181,7 +169,7 @@ module ActiveMerchant #:nodoc:
           :dateq => Time.now.strftime('%d%m%Y%H%M%S'),
           :numquestion => unique_id(parameters[:order_id]),
           :site => @options[:login].to_s[0,7],
-          :rang => @options[:rang] || @options[:login].to_s[7..-1],
+          :rang => @options[:login].to_s[7..-1],
           :cle => @options[:password],
           :pays => '',
           :archivage => parameters[:order_id]

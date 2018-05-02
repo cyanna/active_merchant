@@ -2,7 +2,7 @@ require 'test_helper'
 
 class EwayManagedTest < Test::Unit::TestCase
   def setup
-    Base.mode = :test
+    Base.gateway_mode = :test
 
     @gateway = EwayManagedGateway.new(:username => 'username', :login => 'login', :password => 'password')
 

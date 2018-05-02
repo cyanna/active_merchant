@@ -136,7 +136,7 @@ module ActiveMerchant #:nodoc:
       end
 
       def add_description(post, options)
-        post[:description] = options[:description] || "Description"
+        post[:description] = options[:description]
       end
 
       def add_testmode(post)

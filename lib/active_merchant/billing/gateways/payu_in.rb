@@ -11,7 +11,7 @@ module ActiveMerchant #:nodoc:
 
       self.supported_countries = ['IN']
       self.default_currency = 'INR'
-      self.supported_cardtypes = [:visa, :master, :american_express, :diners_club, :maestro]
+      self.supported_cardtypes = [:visa, :master, :american_express, :diners_club]
 
       self.homepage_url = 'https://www.payu.in/'
       self.display_name = 'PayU India'
@@ -135,8 +135,7 @@ module ActiveMerchant #:nodoc:
         visa: "VISA",
         master: "MAST",
         american_express: "AMEX",
-        diners_club: "DINR",
-        maestro: "MAES"
+        diners_club: "DINR"
       }
 
       def add_payment(post, payment)

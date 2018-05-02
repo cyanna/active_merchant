@@ -252,7 +252,7 @@ module ActiveMerchant #:nodoc:
         end
 
         def message
-          params[:ProcessPaymentResult_AuthorisationResult] || params[:response_ResponseMessage]
+          params[:ProcessPaymentResult_AuthorisationResult]
         end
       end
 

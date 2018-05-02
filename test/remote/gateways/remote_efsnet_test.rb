@@ -3,7 +3,7 @@ require 'test_helper'
 class RemoteEfsnetTest < Test::Unit::TestCase
   
   def setup
-    Base.mode = :test
+    Base.gateway_mode = :test
 
     @gateway = EfsnetGateway.new(fixtures(:efsnet))
     

@@ -5,7 +5,7 @@ class PayJunctionTest < Test::Unit::TestCase
   include CommStub
 
   def setup
-    Base.mode = :test
+    Base.gateway_mode = :test
 
     @gateway = PayJunctionGateway.new(
                  :login      => "pj-ql-01",

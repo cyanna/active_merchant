@@ -30,7 +30,6 @@ module ActiveMerchant #:nodoc:
       self.supported_countries = ['US']
       self.homepage_url = 'https://www.paypal.com/cgi-bin/webscr?cmd=xpt/merchant/ExpressCheckoutIntro-outside'
       self.display_name = 'PayPal Express Checkout'
-      self.currencies_without_fractions = %w(HUF JPY TWD)
 
       def setup_authorization(money, options = {})
         requires!(options, :return_url, :cancel_return_url)
@@ -187,8 +186,6 @@ module ActiveMerchant #:nodoc:
               if options.has_key?(:allow_buyer_optin)
                 xml.tag! 'n2:BuyerEmailOptInEnable', (options[:allow_buyer_optin] ? '1' : '0')
               end
-
-              xml.tag! 'n2:TotalType', options[:total_type] unless options[:total_type].blank?
             end
           end
         end
